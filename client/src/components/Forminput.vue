@@ -1,11 +1,11 @@
 <template>
   <div class="Input">
-    <div class="Input-Wrapper">
-      <input id="search" class="Input-Field" type="text" v-model="searchText"/>
+    <div class="Input-Wrapper" :class="{'Input-Wrapper--border': !isFocus}">
+      <input id="search" class="Input-Field" v-model="searchText" @focusin="isFocus = true" @focusout="isFocus = false"/>
       <label for="search" class="Input-Label"></label>
     </div>
     <div class="Input-Autocomplete Autocomplete" v-if="wordsForAutocomplete.length !== 0">
-      <div class="Autocomplete-Item" v-for="item in wordsForAutocomplete" :key="item">
+      <div class="Autocomplete-Item" v-for="item in wordsForAutocomplete" :key="item" @click="searchText = item">
         {{ item }}
       </div>
     </div>
@@ -19,6 +19,7 @@ import { SERVER_URL } from './../env';
 export default {
   data() {
     return {
+      isFocus: false,
       searchText: '',
       autocompleteData: [],
       wordsForAutocomplete: [],
@@ -28,8 +29,15 @@ export default {
 
   watch: {
     searchText(value) {
-      this.wordsForAutocomplete = this.autocompleteData.filter(item => item.indexOf(value) !== -1);
+      if(value.length > 2) {
+        this.wordsForAutocomplete = this.autocompleteData.filter(item => item.indexOf(value.slice(0, 2)) !== -1);
+      }
+      else this.wordsForAutocomplete = [];
     }
+  },
+
+  filters: {
+
   },
 
   mounted() {
@@ -52,17 +60,6 @@ export default {
     position: relative;
     padding: 7px 0;
 
-    &:before {
-      content: '';
-      display: block;
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      width: 100%;
-      height: 1px;
-      background-color: #999;
-    }
-
     &:focus:before {
       display: none;
     }
@@ -79,6 +76,17 @@ export default {
       border-right: 1px solid #858585;
       border-bottom: 1px solid #858585;
     }
+  }
+
+  &-Wrapper--border:before {
+    content: '';
+    display: block;
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 1px;
+    background-color: #999;
   }
 
   &-Field {
@@ -105,6 +113,24 @@ export default {
     background-color: #1155CC;
     transition: all 0.2s linear;
     visibility: hidden;
+  }
+}
+
+.Autocomplete {
+  padding-top: 6px;
+  text-align-last: left;
+  box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+
+  &-Item {
+    padding: 5px 12px;
+    font-size: 13px;
+    line-height: 15px;
+    cursor: pointer;
+    border-bottom: 1px solid #F1F1F1;
+
+    &:hover {
+      background-color: #F1F1F1;;
+    }
   }
 }
 </style>
