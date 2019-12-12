@@ -1,59 +1,117 @@
 <template>
   <div class="Input">
-    <div class="Input-Wrapper" :class="{'Input-Wrapper--border': !isFocus}">
-      <input id="search" class="Input-Field" v-model="searchText" @focusin="isFocus = true" @focusout="isFocus = false"/>
+    <div :class="[ isFocus ? 'Input-Wrapper' : 'Input-Wrapper Input-Wrapper--border' ]"
+    >
+      <input
+        id="search"
+        class="Input-Field"
+        v-model="searchText"
+        @focusin="isFocus = true"
+        @focusout="isFocus = false"
+        @keyup.up="onArrowUp"
+        @keyup.down="onArrowDown"
+        @keyup.enter="onEnter"
+      />
       <label for="search" class="Input-Label"></label>
     </div>
-    <div class="Input-Autocomplete Autocomplete" v-if="wordsForAutocomplete.length !== 0">
-      <div class="Autocomplete-Item" v-for="item in wordsForAutocomplete" :key="item" @click="searchText = item">
-        {{ item }}
+    <div
+      class="Input-Autocomplete Autocomplete"
+      v-if="wordsForAutocomplete.length !== 0 && (isFocus || isHovered)"
+    >
+      <div
+        :class="[
+          wordsCounter === index
+            ? 'Autocomplete-Item Autocomplete-Item--state_highlighted'
+            : 'Autocomplete-Item'
+        ]"
+        v-for="(item, index) in wordsForAutocomplete"
+        :key="item.value"
+        @click="onClickItem(item.value)"
+        @mouseover="isHovered = true"
+        @mouseout="isHovered = false"
+      >
+        <span v-html="item.raw"></span>
       </div>
     </div>
   </div>
 </template>
 
 <script>
-import axios from 'axios';
-import { SERVER_URL } from './../env';
+import axios from "axios";
+import { SERVER_URL } from "./../env";
 
 export default {
   data() {
     return {
       isFocus: false,
-      searchText: '',
+      isHovered: false,
+      searchText: "",
+      wordsCounter: 0,
       autocompleteData: [],
       wordsForAutocomplete: [],
-      errors: [],
-    }
+      errors: []
+    };
   },
 
   watch: {
     searchText(value) {
-      if(value.length > 2) {
-        this.wordsForAutocomplete = this.autocompleteData.filter(item => item.indexOf(value.slice(0, 2)) !== -1);
-      }
-      else this.wordsForAutocomplete = [];
+      if (value !== "") {
+        this.wordsForAutocomplete = this.autocompleteData
+          .filter(item => item.indexOf(value) !== -1)
+          .map(item => {
+            const bold = item.substr(item.indexOf(value), value.length);
+            const start = item.slice(0, item.indexOf(value));
+            const end = item.slice(item.indexOf(value) + value.length);
+
+            return {
+              value: item,
+              raw: `${start}<b>${bold}</b>${end}`
+            };
+          });
+      } else this.wordsForAutocomplete = [];
     }
   },
 
-  filters: {
+  methods: {
+    onClickItem(item) {
+      this.searchText = item;
+      this.isHovered = false;
+    },
 
+    onArrowDown() {
+      if (this.wordsCounter < this.wordsForAutocomplete.length - 1)
+        this.wordsCounter++;
+    },
+
+    onArrowUp() {
+      if (this.wordsCounter > 0) this.wordsCounter--;
+    },
+
+    onEnter() {
+      this.searchText = this.wordsForAutocomplete[this.wordsCounter].value;
+      this.isHovered = false;
+      this.isFocus = false;
+      this.wordsCounter = -1;
+    }
   },
 
   mounted() {
-    axios.get(`${SERVER_URL}/api`)
-    .then(res => this.autocompleteData = res.data)
-    .catch(e => this.errors.push(e))
+    axios
+      .get(`${SERVER_URL}/api`)
+      .then(res => (this.autocompleteData = res.data))
+      .catch(e => this.errors.push(e));
   }
-}
+};
 </script>
 
 <style lang="scss">
+@import url("https://fonts.googleapis.com/css?family=Roboto&display=swap");
+
 .Input {
   width: 276px;
   margin-right: auto;
   margin-left: auto;
-  font-family: 'Roboto', sans-serif;
+  font-family: "Roboto", sans-serif;
   font-size: 13px;
 
   &-Wrapper {
@@ -65,21 +123,23 @@ export default {
     }
 
     &:after {
-      content: '';
+      content: "";
       display: block;
       position: absolute;
       top: 5px;
       right: 0;
       width: 10px;
       height: 10px;
+      background-color: #fff;
       transform: rotate(45deg);
       border-right: 1px solid #858585;
       border-bottom: 1px solid #858585;
+      cursor: pointer;
     }
   }
 
   &-Wrapper--border:before {
-    content: '';
+    content: "";
     display: block;
     position: absolute;
     bottom: 0;
@@ -91,6 +151,7 @@ export default {
 
   &-Field {
     width: 100%;
+    font-family: "Roboto", sans-serif;
     border: none;
 
     &:focus {
@@ -110,7 +171,7 @@ export default {
     left: 50%;
     width: 1px;
     height: 2px;
-    background-color: #1155CC;
+    background-color: #1155cc;
     transition: all 0.2s linear;
     visibility: hidden;
   }
@@ -126,10 +187,14 @@ export default {
     font-size: 13px;
     line-height: 15px;
     cursor: pointer;
-    border-bottom: 1px solid #F1F1F1;
+    border-bottom: 1px solid #f1f1f1;
+
+    &--state_highlighted {
+      background-color: #f1f1f1;
+    }
 
     &:hover {
-      background-color: #F1F1F1;;
+      background-color: #f1f1f1;
     }
   }
 }
